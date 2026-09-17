@@ -232,6 +232,14 @@ PRIVATE_REPOS=false INFRA_REPO_NAME=cluster-infra PLATFORM_REPO_NAME=platform-to
 
 After splitting, use [self-service-platform.yml](.github/workflows/self-service-platform.yml) for one-click Argo CD, Prometheus, Grafana, Alertmanager, Metrics Server, and exporter installation, then use `self-service-nginx.yml` for the application. Configure the protected `KUBECONFIG_B64` secret in each deployment repository.
 
+For one repository per independent tool, use the focused exporter:
+
+```bash
+./scripts/export-tool-repos.sh Somasundaram004
+```
+
+It creates and pushes `k8s-argocd`, `k8s-observability`, `k8s-metrics-server`, `k8s-unikube`, `k8s-ai-agent`, and `k8s-ci-cd`. Existing infrastructure, platform, and application repositories remain available separately.
+
 ## Kubernetes upgrade
 
 Kubernetes upgrades must advance one minor version at a time. Update `KUBERNETES_MINOR` and `KUBERNETES_VERSION` in `cluster.env`, then run the script one node at a time: control planes first, followed by workers. Never upgrade all nodes concurrently.

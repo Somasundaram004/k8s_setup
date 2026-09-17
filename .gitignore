@@ -6,3 +6,4 @@ cluster.env
 *.tfstate.*
 agent/memory/*.jsonl
 agent-report.json
+.tool-repo-export/
