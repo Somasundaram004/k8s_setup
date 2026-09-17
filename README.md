@@ -4,6 +4,8 @@ This repository provides repeatable Bash scripts for an Ubuntu kubeadm cluster. 
 
 It also includes a principal platform agent with Kubernetes, CI/CD, and reliability specialists. The agent produces auditable plans and stores bounded run memory locally; it does not silently modify infrastructure or rewrite its own code.
 
+The current platform architecture and control/data flows are documented in [docs/architecture.md](docs/architecture.md). Every feature update must update this README and that architecture diagram.
+
 The repository also includes a macOS operator path. macOS is not used as a production kubeadm node; it connects to Ubuntu nodes over SSH.
 
 Every setup script supports `--dry-run`. It prints the components and operations that would be affected without requiring root, opening SSH, installing packages, draining nodes, or changing Kubernetes:
