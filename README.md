@@ -2,6 +2,8 @@
 
 This repository provides repeatable Bash scripts for an Ubuntu kubeadm cluster. It installs containerd, Kubernetes, a Calico network, and UniKube, then upgrades nodes with drain/uncordon protection.
 
+It also includes a principal platform agent with Kubernetes, CI/CD, and reliability specialists. The agent produces auditable plans and stores bounded run memory locally; it does not silently modify infrastructure or rewrite its own code.
+
 The repository also includes a macOS operator path. macOS is not used as a production kubeadm node; it connects to Ubuntu nodes over SSH.
 
 Every setup script supports `--dry-run`. It prints the components and operations that would be affected without requiring root, opening SSH, installing packages, draining nodes, or changing Kubernetes:
@@ -36,6 +38,18 @@ ssh -V
 ```
 
 Docker Desktop is used to build and test application images locally. Kubernetes itself runs on the Ubuntu servers through kubeadm; Docker Desktop is not the production cluster runtime.
+
+## Agent runner
+
+Run the principal agent locally without third-party Python dependencies:
+
+```bash
+./scripts/run-agent.sh "Review the Kubernetes upgrade and monitoring risks"
+```
+
+The output contains the principal plan plus specialist reports from Kubernetes, CI/CD, and reliability agents. Set `AI_API_KEY` for an OpenAI-compatible backend; without it, the runner remains offline and returns conservative review guidance. Optional `AI_BASE_URL` and `AI_MODEL` support compatible providers.
+
+GitHub Actions runs the same agent weekly and on manual dispatch using [agent-runner.yml](.github/workflows/agent-runner.yml). Add `AI_API_KEY` as a repository secret and optional `AI_BASE_URL`/`AI_MODEL` repository variables. Reports are uploaded as workflow artifacts. The workflow has `contents: read` permission and does not deploy or mutate the cluster.
 
 ## Complete installation
 

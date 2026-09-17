@@ -4,3 +4,5 @@ cluster.env
 *certificate-key.txt
 *.tfstate
 *.tfstate.*
+agent/memory/*.jsonl
+agent-report.json

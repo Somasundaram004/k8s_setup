@@ -1,0 +1,36 @@
+name: platform-agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      goal:
+        description: "Review goal"
+        required: false
+        default: "Review Kubernetes platform health and pending safe improvements."
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  principal-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run principal and specialist agents
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
+          AGENT_GOAL: ${{ inputs.goal }}
+        run: |
+          set -euo pipefail
+          goal="${AGENT_GOAL:-Review Kubernetes platform health and pending safe improvements.}"
+          python3 -m agent.cli --root . "$goal" | tee agent-report.json
+      - name: Upload agent report
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-agent-report
+          path: agent-report.json
