@@ -21,12 +21,12 @@ ACTION="${POSITIONAL_ARGS[0]:-}"
 ROLE="${POSITIONAL_ARGS[1]:-}"
 HOST="${POSITIONAL_ARGS[2]:-}"
 REMOTE_USER="${REMOTE_USER:-ubuntu}"
-[[ "$ACTION" == bootstrap || "$ACTION" == upgrade || "$ACTION" == health ]] || {
-  printf 'Usage: %s [--dry-run] bootstrap|upgrade|health control-plane|worker host\n' "$0" >&2
+[[ "$ACTION" == bootstrap || "$ACTION" == upgrade || "$ACTION" == health || "$ACTION" == platform ]] || {
+  printf 'Usage: %s [--dry-run] bootstrap|upgrade|health|platform role host\n' "$0" >&2
   exit 1
 }
 [[ -n "$ROLE" && -n "$HOST" ]] || { printf 'Role and host are required.\n' >&2; exit 1; }
-[[ "$ACTION" == health || "$ROLE" == control-plane || "$ROLE" == worker ]] || exit 1
+[[ "$ACTION" == health || "$ACTION" == platform || "$ROLE" == control-plane || "$ROLE" == worker ]] || exit 1
 
 if [[ "$DRY_RUN" == true ]]; then
   printf 'DRY RUN: macOS would target %s@%s\n' "$REMOTE_USER" "$HOST"
@@ -34,6 +34,7 @@ if [[ "$DRY_RUN" == true ]]; then
     bootstrap) printf 'Would stage configuration and run Linux bootstrap for the %s role.\n' "$ROLE" ;;
     upgrade) printf 'Would stage configuration and run a rolling %s upgrade, including drain and uncordon.\n' "$ROLE" ;;
     health) printf 'Would run the Kubernetes health check remotely.\n' ;;
+    platform) printf 'Would stage local Helm values and install or upgrade Argo CD, Prometheus, Alertmanager, Grafana, and Metrics Server.\n' ;;
   esac
   printf 'No SSH, SCP, package installation, drain, or Kubernetes mutation will occur.\n'
   exit 0
@@ -47,14 +48,15 @@ remote="${REMOTE_USER}@${HOST}"
 ssh "$remote" "mkdir -p '$remote_dir/scripts'"
 scp "$CONFIG_FILE" "$remote:$remote_dir/cluster.env"
 scp "$SCRIPT_DIR"/*.sh "$remote:$remote_dir/scripts/"
+scp -r "$ROOT_DIR/templates" "$remote:$remote_dir/"
 ssh "$remote" "chmod 700 '$remote_dir/scripts/'*.sh '$remote_dir/cluster.env'"
 
 case "$ACTION" in
   bootstrap)
-    if [[ "$ROLE" == worker ]]; then
-      [[ -n "${JOIN_COMMAND:-}" ]] || { printf 'Set JOIN_COMMAND for a worker bootstrap.\n' >&2; exit 1; }
+    if [[ "$ROLE" == worker || ( "$ROLE" == control-plane && -n "${JOIN_COMMAND:-}" ) ]]; then
+      [[ -n "${JOIN_COMMAND:-}" ]] || { printf 'Set JOIN_COMMAND for a node join.\n' >&2; exit 1; }
       join_command="$(printf '%q' "$JOIN_COMMAND")"
-      ssh "$remote" "sudo env JOIN_COMMAND=$join_command CONFIG_FILE='$remote_dir/cluster.env' bash '$remote_dir/scripts/bootstrap.sh' worker"
+      ssh "$remote" "sudo env JOIN_COMMAND=$join_command CONFIG_FILE='$remote_dir/cluster.env' bash '$remote_dir/scripts/bootstrap.sh' '$ROLE'"
     else
       ssh "$remote" "sudo CONFIG_FILE='$remote_dir/cluster.env' bash '$remote_dir/scripts/bootstrap.sh' control-plane"
     fi
@@ -73,5 +75,8 @@ case "$ACTION" in
     ;;
   health)
     ssh "$remote" "sudo CONFIG_FILE='$remote_dir/cluster.env' bash '$remote_dir/scripts/health-check.sh'"
+    ;;
+  platform)
+    ssh "$remote" "sudo KUBECONFIG=/etc/kubernetes/admin.conf CONFIG_FILE='$remote_dir/cluster.env' bash '$remote_dir/scripts/install-platform-kit.sh'"
     ;;
 esac

@@ -1,0 +1,45 @@
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    replicas: 2
+    retention: 120h
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 10Gi
+
+grafana:
+  enabled: true
+  replicas: 2
+  service:
+    type: ClusterIP
+  persistence:
+    enabled: true
+    size: 10Gi
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+
+prometheus:
+  enabled: true
+  prometheusSpec:
+    replicas: 2
+    retention: 15d
+    retentionSize: 45GB
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 50Gi
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: true
