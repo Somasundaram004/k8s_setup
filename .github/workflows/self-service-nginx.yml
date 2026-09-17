@@ -1,0 +1,44 @@
+name: self-service-nginx
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Container image to deploy"
+        required: true
+        default: "nginx:1.27-alpine"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.32.0
+      - name: Configure kubeconfig
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$KUBECONFIG_B64"
+          mkdir -p "$RUNNER_TEMP/kube"
+          printf '%s' "$KUBECONFIG_B64" | base64 --decode > "$RUNNER_TEMP/kube/config"
+          chmod 600 "$RUNNER_TEMP/kube/config"
+          echo "KUBECONFIG=$RUNNER_TEMP/kube/config" >> "$GITHUB_ENV"
+      - name: Deploy without downtime
+        env:
+          IMAGE: ${{ inputs.image }}
+        run: |
+          set -euo pipefail
+          kubectl apply -k templates/apps/nginx
+          kubectl -n nginx-app set image deployment/nginx "nginx=$IMAGE"
+          kubectl -n nginx-app rollout status deployment/nginx --timeout=10m
+          kubectl -n nginx-app wait --for=condition=Available deployment/nginx --timeout=10m
+          kubectl -n nginx-app get deployment,service,pdb,pods -o wide

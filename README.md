@@ -17,6 +17,7 @@ Every setup script supports `--dry-run`. It prints the components and operations
 ./scripts/install-platform-kit.sh --dry-run
 ./scripts/build-image.sh --dry-run ghcr.io/OWNER/REPOSITORY:dev
 ./scripts/macos/setup-all.sh --dry-run
+./scripts/deploy-nginx.sh --dry-run
 ```
 
 ## Zero-downtime requirement
@@ -200,6 +201,36 @@ For a complete Mac-driven deployment, set `CONTROL_PLANE_HOSTS`, `WORKER_HOSTS`,
 ```
 
 The runner stages all local templates, bootstraps the first control plane, automatically creates and uses kubeadm join commands for the remaining control planes and workers, installs Helm on the first control plane, installs the platform kit, and runs the health check. Use three control planes and at least two workers for the no-downtime topology described above.
+
+## Self-service Nginx deployment
+
+The repository includes an HA Nginx application under [templates/apps/nginx](templates/apps/nginx). It uses three replicas, readiness and liveness probes, `maxUnavailable: 0`, topology spreading, and a PodDisruptionBudget requiring two available pods. Deploy or upgrade it locally with:
+
+```bash
+./scripts/deploy-nginx.sh --dry-run
+./scripts/deploy-nginx.sh image=ghcr.io/OWNER/REPOSITORY:TAG
+kubectl -n nginx-app port-forward service/nginx 8080:80
+```
+
+GitHub users can run [self-service-nginx.yml](.github/workflows/self-service-nginx.yml) from the Actions tab, select an image, and deploy without shell access. Add a base64-encoded admin kubeconfig as the protected `KUBECONFIG_B64` production environment secret. The workflow waits for the rolling deployment to become available before completing.
+
+## Separate Git repositories
+
+The optional exporter creates and pushes three focused repositories with GitHub CLI: infrastructure (`k8s-infra`), platform services (`k8s-platform`), and the Nginx application (`nginx-app`). It never overwrites an existing repository without GitHub CLI reporting the conflict:
+
+```bash
+brew install gh
+gh auth login
+./scripts/export-and-push-repos.sh Somasundaram004
+```
+
+Override names or visibility when needed:
+
+```bash
+PRIVATE_REPOS=false INFRA_REPO_NAME=cluster-infra PLATFORM_REPO_NAME=platform-tools APP_REPO_NAME=web-nginx ./scripts/export-and-push-repos.sh Somasundaram004
+```
+
+After splitting, use [self-service-platform.yml](.github/workflows/self-service-platform.yml) for one-click Argo CD, Prometheus, Grafana, Alertmanager, Metrics Server, and exporter installation, then use `self-service-nginx.yml` for the application. Configure the protected `KUBECONFIG_B64` secret in each deployment repository.
 
 ## Kubernetes upgrade
 
