@@ -1,0 +1,6 @@
+cluster.env
+*.kubeconfig
+*.join-command.txt
+*certificate-key.txt
+*.tfstate
+*.tfstate.*
